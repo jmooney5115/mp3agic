@@ -23,19 +23,16 @@ public class ID3v2UrlFrameData extends AbstractID3v2FrameData {
 	}
 	
 	protected void unpackFrameData(byte[] bytes) throws InvalidDataException {
-		int marker;
-		for (marker = 1; marker < bytes.length; marker++) {
-			if (bytes[marker] == 0) break;
-		}
-		description = new EncodedText(bytes[0], BufferTools.copyBuffer(bytes, 1, marker - 1));
-		marker += description.getTerminator().length;
-		int length = 0;
-		for (int i = marker; i < bytes.length; i++) {
-			if (bytes[i] == 0) break;
-			length++;
+		int marker = BufferTools.indexOfTerminatorForEncoding(bytes, 1, bytes[0]);
+		if (marker >= 0) {
+			description = new EncodedText(bytes[0], BufferTools.copyBuffer(bytes, 1, marker - 1));
+			marker += description.getTerminator().length;
+		} else {
+			description = new EncodedText(bytes[0], "");
+			marker = 1;
 		}
 		try {
-			url = BufferTools.byteBufferToString(bytes, marker, length);
+			url = BufferTools.byteBufferToString(bytes, marker, bytes.length - marker);
 		} catch (UnsupportedEncodingException e) {
 			url = "";
 		}
@@ -86,18 +83,34 @@ public class ID3v2UrlFrameData extends AbstractID3v2FrameData {
 		this.url = url;
 	}
 	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((description == null) ? 0 : description.hashCode());
+		result = prime * result + ((url == null) ? 0 : url.hashCode());
+		return result;
+	}
+
+	@Override
 	public boolean equals(Object obj) {
-		if (! (obj instanceof ID3v2UrlFrameData)) return false;
-		if (! super.equals(obj)) return false;
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
 		ID3v2UrlFrameData other = (ID3v2UrlFrameData) obj;
-		if (url == null) {
-			if (other.url != null) return false;
-		} else if (other.url == null) return false;
-		else if (! url.equals(other.url)) return false;
 		if (description == null) {
-			if (other.description != null) return false;
-		} else if (other.description == null) return false;
-		else if (! description.equals(other.description)) return false;
+			if (other.description != null)
+				return false;
+		} else if (!description.equals(other.description))
+			return false;
+		if (url == null) {
+			if (other.url != null)
+				return false;
+		} else if (!url.equals(other.url))
+			return false;
 		return true;
 	}
 }

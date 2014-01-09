@@ -32,18 +32,15 @@ public class ID3v2CommentFrameData extends AbstractID3v2FrameData {
 		} catch (UnsupportedEncodingException e) {
 			language = "";
 		}
-		int marker;
-		for (marker = 4; marker < bytes.length; marker++) {
-			if (bytes[marker] == 0) break;
+		int marker = BufferTools.indexOfTerminatorForEncoding(bytes, 4, bytes[0]);
+		if (marker >= 4) {
+			description = new EncodedText(bytes[0], BufferTools.copyBuffer(bytes, 4, marker - 4));
+			marker += description.getTerminator().length;
+		} else {
+			description = new EncodedText(bytes[0], "");
+			marker = 4;
 		}
-		description = new EncodedText(bytes[0], BufferTools.copyBuffer(bytes, 4, marker - 4));
-		marker += description.getTerminator().length;
-		int length = 0;
-		for (int i = marker; i < bytes.length; i++) {
-			if (bytes[i] == 0) break;
-			length++;
-		}
-		comment = new EncodedText(bytes[0], BufferTools.copyBuffer(bytes, marker, length));
+		comment = new EncodedText(bytes[0], BufferTools.copyBuffer(bytes, marker, bytes.length - marker));
 	}
 
 	protected byte[] packFrameData() {
@@ -109,22 +106,42 @@ public class ID3v2CommentFrameData extends AbstractID3v2FrameData {
 		this.description = description;
 	}
 	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((comment == null) ? 0 : comment.hashCode());
+		result = prime * result
+				+ ((description == null) ? 0 : description.hashCode());
+		result = prime * result
+				+ ((language == null) ? 0 : language.hashCode());
+		return result;
+	}
+
+	@Override
 	public boolean equals(Object obj) {
-		if (! (obj instanceof ID3v2CommentFrameData)) return false;
-		if (! super.equals(obj)) return false;
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
 		ID3v2CommentFrameData other = (ID3v2CommentFrameData) obj;
-		if (language == null) {
-			if (other.language != null) return false;
-		} else if (other.language == null) return false;
-		else if (! language.equals(other.language)) return false;
-		if (description == null) {
-			if (other.description != null) return false;
-		} else if (other.description == null) return false;
-		else if (! description.equals(other.description)) return false;
 		if (comment == null) {
-			if (other.comment != null) return false;
-		} else if (other.comment == null) return false;
-		else if (! comment.equals(other.comment)) return false;
+			if (other.comment != null)
+				return false;
+		} else if (!comment.equals(other.comment))
+			return false;
+		if (description == null) {
+			if (other.description != null)
+				return false;
+		} else if (!description.equals(other.description))
+			return false;
+		if (language == null) {
+			if (other.language != null)
+				return false;
+		} else if (!language.equals(other.language))
+			return false;
 		return true;
 	}
 }

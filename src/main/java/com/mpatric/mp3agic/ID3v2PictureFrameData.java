@@ -28,23 +28,26 @@ public class ID3v2PictureFrameData extends AbstractID3v2FrameData {
 	}
 	
 	protected void unpackFrameData(byte[] bytes) throws InvalidDataException {
-		int marker;
-		for (marker = 1; marker < bytes.length; marker++) {
-			if (bytes[marker] == 0) break;
-		}
-		try {
-			mimeType = BufferTools.byteBufferToString(bytes, 1, marker - 1);
-		} catch (UnsupportedEncodingException e) {
+		int marker = BufferTools.indexOfTerminator(bytes, 1, 1);
+		if (marker >= 0) {
+			try {
+				mimeType = BufferTools.byteBufferToString(bytes, 1, marker - 1);
+			} catch (UnsupportedEncodingException e) {
+				mimeType = "image/unknown";
+			}
+		} else {
 			mimeType = "image/unknown";
 		}
 		pictureType = bytes[marker + 1];
 		marker += 2;
-		int marker2;
-		for (marker2 = marker; marker2 < bytes.length; marker2++) {
-			if (bytes[marker2] == 0) break;
+		int marker2 = BufferTools.indexOfTerminatorForEncoding(bytes, marker, bytes[0]);
+		if (marker2 >= 0) {
+			description = new EncodedText(bytes[0], BufferTools.copyBuffer(bytes, marker , marker2 - marker));
+			marker2 += description.getTerminator().length;
+		} else {
+			description = new EncodedText(bytes[0], "");
+			marker2 = marker;
 		}
-		description = new EncodedText(bytes[0], BufferTools.copyBuffer(bytes, marker, marker2 - marker));
-		marker2 += description.getTerminator().length;
 		imageData = BufferTools.copyBuffer(bytes, marker2, bytes.length - marker2);
 	}
 	
@@ -116,24 +119,43 @@ public class ID3v2PictureFrameData extends AbstractID3v2FrameData {
 	public void setImageData(byte[] imageData) {
 		this.imageData = imageData;
 	}
-	
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result
+				+ ((description == null) ? 0 : description.hashCode());
+		result = prime * result + Arrays.hashCode(imageData);
+		result = prime * result
+				+ ((mimeType == null) ? 0 : mimeType.hashCode());
+		result = prime * result + pictureType;
+		return result;
+	}
+
+	@Override
 	public boolean equals(Object obj) {
-		if (! (obj instanceof ID3v2PictureFrameData)) return false;
-		if (! super.equals(obj)) return false;
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
 		ID3v2PictureFrameData other = (ID3v2PictureFrameData) obj;
-		if (pictureType != other.pictureType) return false;
-		if (mimeType == null) {
-			if (other.mimeType != null) return false;
-		} else if (other.mimeType == null) return false;
-		else if (! mimeType.equals(other.mimeType)) return false;
 		if (description == null) {
-			if (other.description != null) return false;
-		} else if (other.description == null) return false;
-		else if (! description.equals(other.description)) return false;
-		if (imageData == null) {
-			if (other.imageData != null) return false;
-		} else if (other.imageData == null) return false;
-		else if (! Arrays.equals(imageData, other.imageData)) return false;
+			if (other.description != null)
+				return false;
+		} else if (!description.equals(other.description))
+			return false;
+		if (!Arrays.equals(imageData, other.imageData))
+			return false;
+		if (mimeType == null) {
+			if (other.mimeType != null)
+				return false;
+		} else if (!mimeType.equals(other.mimeType))
+			return false;
+		if (pictureType != other.pictureType)
+			return false;
 		return true;
 	}
 }

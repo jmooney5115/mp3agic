@@ -1,22 +1,22 @@
 package com.mpatric.mp3agic;
 
 public class Version {
-	private static final int MAJOR_VERSION = 0;
-	private static final int MINOR_VERSION = 7;
+	private static final String VERSION;
 	private static final String URL = "http://github.com/mpatric/mp3agic";
 	
+	static { // get version from JAR manifest
+		String implementationVersion =  Version.class.getPackage().getImplementationVersion();
+		VERSION = implementationVersion != null ? implementationVersion : "UNKNOWN-SNAPSHOT";
+	}
+	
 	public static String asString() {
-		return getVersion() + " - " + Version.getUrl(); 
+		return getVersion() + " - " + getUrl(); 
 	}	
-	public static int getMajorVersion() {
-		return MAJOR_VERSION;
-	}
-	public static int getMinorVersion() {
-		return MINOR_VERSION;
-	}
+
 	public static String getVersion() {
-		return MAJOR_VERSION + "." + MINOR_VERSION;
+		return VERSION;
 	}
+	
 	public static String getUrl() {
 		return URL;
 	}

@@ -107,13 +107,17 @@ public class EncodedText {
 			leadingCharsToRemove = 3;
 		}
 		int trailingCharsToRemove = 0;
-		for (int i = 1; i <= 2; i++) {
-			if ((value.length - leadingCharsToRemove - trailingCharsToRemove) >= i && value[value.length - i] == 0) {
-				trailingCharsToRemove++;
-			} else {
-				break;
+		byte[] terminator = terminators[textEncoding];
+		if (value.length - leadingCharsToRemove >= terminator.length) {
+			boolean haveTerminator = true;
+			for (int i = 0; i < terminator.length; i++) {
+				if (value[value.length - terminator.length + i] != terminator[i]) {
+					haveTerminator = false;
+					break;
+				}
 			}
-		}
+			if (haveTerminator) trailingCharsToRemove = terminator.length;
+		}		
 		if (leadingCharsToRemove + trailingCharsToRemove > 0) {
 			int newLength = value.length - leadingCharsToRemove - trailingCharsToRemove;
 			byte[] newValue = new byte[newLength];
@@ -194,16 +198,32 @@ public class EncodedText {
 		return characterSetForTextEncoding(textEncoding);
 	}
 	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + textEncoding;
+		result = prime * result + Arrays.hashCode(value);
+		return result;
+	}
+
+	@Override
 	public boolean equals(Object obj) {
-		if (! (obj instanceof EncodedText)) return false;
-		if (super.equals(obj)) return true;
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
 		EncodedText other = (EncodedText) obj;
-		if (textEncoding != other.textEncoding) return false;
-		if (! Arrays.equals(value, other.value)) return false;
+		if (textEncoding != other.textEncoding)
+			return false;
+		if (!Arrays.equals(value, other.value))
+			return false;
 		return true;
 	}
 	
-	public static String bytesToString(byte[] bytes, String characterSet) throws CharacterCodingException {
+	private static String bytesToString(byte[] bytes, String characterSet) throws CharacterCodingException {
 		CharBuffer cbuf = bytesToCharBuffer(bytes, characterSet);
 		String s = cbuf.toString();
 		int length = s.indexOf(0);
@@ -217,7 +237,7 @@ public class EncodedText {
 		return decoder.decode(ByteBuffer.wrap(bytes));
 	}
 	
-	public static byte[] stringToBytes(String s, String characterSet) {
+	private static byte[] stringToBytes(String s, String characterSet) {
 		try {
 			return charBufferToBytes(CharBuffer.wrap(s), characterSet);
 		} catch (CharacterCodingException e) {

@@ -1,6 +1,8 @@
 package com.mpatric.mp3agic;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -194,6 +196,65 @@ public class ID3v2TagTest extends TestCase {
 		assertEquals("(13)Pop", genre);
 	}
 	
+	public void testSetGenreDescriptionOn23Tag() throws Exception {
+		ID3v2 id3tag = new ID3v23Tag();
+		setTagFields(id3tag);
+		id3tag.setGenreDescription("Jazz");
+		assertEquals("Jazz", id3tag.getGenreDescription());
+		assertEquals(8, id3tag.getGenre());
+
+		Map<String, ID3v2FrameSet> frameSets = id3tag.getFrameSets();
+		ID3v2FrameSet frameSet = (ID3v2FrameSet) frameSets.get("TCON");
+		List<ID3v2Frame> frames = frameSet.getFrames();
+		ID3v2Frame frame = (ID3v2Frame) frames.get(0);
+		byte[] bytes = frame.getData();
+		String genre = BufferTools.byteBufferToString(bytes, 1, bytes.length - 1);
+		assertEquals("(8)Jazz", genre);
+	}
+	
+	public void testSetGenreDescriptionOn23TagWithUnknownGenre() throws Exception {
+		ID3v2 id3tag = new ID3v23Tag();
+		setTagFields(id3tag);
+		try {
+			id3tag.setGenreDescription("Bebop");
+			fail("expected IllegalArgumentException");
+		} catch (IllegalArgumentException e) {
+			// fine
+		}
+	}
+	
+	public void testSetGenreDescriptionOn24Tag() throws Exception {
+		ID3v2 id3tag = new ID3v24Tag();
+		setTagFields(id3tag);
+		id3tag.setGenreDescription("Jazz");
+		assertEquals("Jazz", id3tag.getGenreDescription());
+		assertEquals(8, id3tag.getGenre());
+
+		Map<String, ID3v2FrameSet> frameSets = id3tag.getFrameSets();
+		ID3v2FrameSet frameSet = (ID3v2FrameSet) frameSets.get("TCON");
+		List<ID3v2Frame> frames = frameSet.getFrames();
+		ID3v2Frame frame = (ID3v2Frame) frames.get(0);
+		byte[] bytes = frame.getData();
+		String genre = BufferTools.byteBufferToString(bytes, 1, bytes.length - 1);
+		assertEquals("Jazz", genre);
+	}
+
+	public void testSetGenreDescriptionOn24TagWithUnknownGenre() throws Exception {
+		ID3v2 id3tag = new ID3v24Tag();
+		setTagFields(id3tag);
+		id3tag.setGenreDescription("Bebop");
+		assertEquals("Bebop", id3tag.getGenreDescription());
+		assertEquals(-1, id3tag.getGenre());
+
+		Map<String, ID3v2FrameSet> frameSets = id3tag.getFrameSets();
+		ID3v2FrameSet frameSet = (ID3v2FrameSet) frameSets.get("TCON");
+		List<ID3v2Frame> frames = frameSet.getFrames();
+		ID3v2Frame frame = (ID3v2Frame) frames.get(0);
+		byte[] bytes = frame.getData();
+		String genre = BufferTools.byteBufferToString(bytes, 1, bytes.length - 1);
+		assertEquals("Bebop", genre);
+	}
+
 	public void testShouldReadCombinedGenreInTag() throws Exception {
 		ID3v2 id3tag = new ID3v23Tag();
 		setTagFields(id3tag);
@@ -211,7 +272,7 @@ public class ID3v2TagTest extends TestCase {
 	}
 	
 	public void testShouldReadFramesFromMp3WithObselete32Tag() throws Exception {
-		byte[] buffer = TestHelper.loadFile("src/test/resources/obselete.mp3");
+		byte[] buffer = TestHelper.loadFile("src/test/resources/obsolete.mp3");
 		ID3v2 id3v2tag = ID3v2TagFactory.createTag(buffer);
 		assertEquals("2.0", id3v2tag.getVersion());
 		assertEquals(0x3c5a2, id3v2tag.getLength());
@@ -229,7 +290,7 @@ public class ID3v2TagTest extends TestCase {
 	}
 	
 	public void testShouldReadTagFieldsFromMp3WithObselete32tag() throws Exception {
-		byte[] buffer = TestHelper.loadFile("src/test/resources/obselete.mp3");
+		byte[] buffer = TestHelper.loadFile("src/test/resources/obsolete.mp3");
 		ID3v2 id3tag = ID3v2TagFactory.createTag(buffer);
 		assertEquals("2009", id3tag.getYear());
 		assertEquals("4/15", id3tag.getTrack());
@@ -265,6 +326,92 @@ public class ID3v2TagTest extends TestCase {
 		id3tag.setEncoder("\u03B9\u03AC");
 		byte[] albumImage = TestHelper.loadFile("src/test/resources/image.png");
 		id3tag.setAlbumImage(albumImage, "image/png");
+	}
+	
+	public void testShouldExtractChapterTOCFramesFromMp3() throws Exception {
+		byte[] buffer = TestHelper.loadFile("src/test/resources/v23tagwithchapters.mp3");
+		ID3v2 id3tag = ID3v2TagFactory.createTag(buffer);
+		
+		ArrayList<ID3v2ChapterTOCFrameData> chapterTOCs = id3tag.getChapterTOC();
+		assertEquals(1, chapterTOCs.size());
+		
+		ID3v2ChapterTOCFrameData tocFrameData = chapterTOCs.get(0);
+		assertEquals("toc1", tocFrameData.getId());
+		String expectedChildren[] = {"ch1", "ch2", "ch3"};
+		assertTrue(Arrays.equals(expectedChildren, tocFrameData.getChildren()));
+		
+		ArrayList<ID3v2Frame> subFrames = tocFrameData.getSubframes();
+		assertEquals(0, subFrames.size());
+	}
+	
+	public void testShouldExtractChapterTOCAndChapterFramesFromMp3() throws Exception {
+		byte[] buffer = TestHelper.loadFile("src/test/resources/v23tagwithchapters.mp3");
+		ID3v2 id3tag = ID3v2TagFactory.createTag(buffer);
+		
+		ArrayList<ID3v2ChapterFrameData> chapters = id3tag.getChapters();
+		assertEquals(3, chapters.size());
+		
+		ID3v2ChapterFrameData chapter1 = chapters.get(0);
+		assertEquals("ch1", chapter1.getId());
+		assertEquals(0, chapter1.getStartTime());
+		assertEquals(5000, chapter1.getEndTime());
+		assertEquals(-1, chapter1.getStartOffset());
+		assertEquals(-1, chapter1.getEndOffset());
+		
+		ArrayList<ID3v2Frame> subFrames1 = chapter1.getSubframes();
+		assertEquals(1, subFrames1.size());
+		ID3v2Frame subFrame1 = subFrames1.get(0);
+		assertEquals("TIT2", subFrame1.getId());
+		ID3v2TextFrameData frameData1 = new ID3v2TextFrameData(false, subFrame1.getData());
+		assertEquals("start", frameData1.getText().toString());
+		
+		ID3v2ChapterFrameData chapter2 = chapters.get(1);
+		assertEquals("ch2", chapter2.getId());
+		assertEquals(5000, chapter2.getStartTime());
+		assertEquals(10000, chapter2.getEndTime());
+		assertEquals(-1, chapter2.getStartOffset());
+		assertEquals(-1, chapter2.getEndOffset());
+		
+		ArrayList<ID3v2Frame> subFrames2 = chapter2.getSubframes();
+		assertEquals(1, subFrames2.size());
+		ID3v2Frame subFrame2 = subFrames2.get(0);
+		assertEquals("TIT2", subFrame2.getId());
+		ID3v2TextFrameData frameData2 = new ID3v2TextFrameData(false, subFrame2.getData());
+		assertEquals("5 seconds", frameData2.getText().toString());
+		
+		ID3v2ChapterFrameData chapter3 = chapters.get(2);
+		assertEquals("ch3", chapter3.getId());
+		assertEquals(10000, chapter3.getStartTime());
+		assertEquals(15000, chapter3.getEndTime());
+		assertEquals(-1, chapter3.getStartOffset());
+		assertEquals(-1, chapter3.getEndOffset());
+		
+		ArrayList<ID3v2Frame> subFrames3 = chapter3.getSubframes();
+		assertEquals(1, subFrames3.size());
+		ID3v2Frame subFrame3 = subFrames3.get(0);
+		assertEquals("TIT2", subFrame3.getId());
+		ID3v2TextFrameData frameData3 = new ID3v2TextFrameData(false, subFrame3.getData());
+		assertEquals("10 seconds", frameData3.getText().toString());
+	}
+	
+	public void testShouldReadTagFieldsFromMp3With32tagResavedByMp3tagWithUTF16Encoding() throws Exception {
+		byte[] buffer = TestHelper.loadFile("src/test/resources/v1andv23tagswithalbumimage-utf16le.mp3");
+		ID3v2 id3tag = ID3v2TagFactory.createTag(buffer);
+		assertEquals("1", id3tag.getTrack());
+		assertEquals("ARTIST123456789012345678901234", id3tag.getArtist());
+		assertEquals("TITLE1234567890123456789012345", id3tag.getTitle());
+		assertEquals("ALBUM1234567890123456789012345", id3tag.getAlbum());
+		assertEquals("2001", id3tag.getYear());
+		assertEquals(0x01, id3tag.getGenre());
+		assertEquals("Classic Rock", id3tag.getGenreDescription());
+		assertEquals("COMMENT123456789012345678901", id3tag.getComment());
+		assertEquals("COMPOSER23456789012345678901234", id3tag.getComposer());
+		assertEquals("ORIGARTIST234567890123456789012", id3tag.getOriginalArtist());
+		assertEquals("COPYRIGHT2345678901234567890123", id3tag.getCopyright());
+		assertEquals("URL2345678901234567890123456789", id3tag.getUrl());
+		assertEquals("ENCODER234567890123456789012345", id3tag.getEncoder());
+		assertEquals(1885, id3tag.getAlbumImage().length);
+		assertEquals("image/png", id3tag.getAlbumImageMimeType());
 	}
 
 	private void setTagFields(ID3v2 id3tag) throws IOException {
